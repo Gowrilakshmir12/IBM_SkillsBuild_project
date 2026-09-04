@@ -1,26 +1,167 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Hello World</title>
-  <style>
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-      background-color: #f0f0f0;
-      font-family: Arial, sans-serif;
-    }
-
-    h1 {
-      color: #333;
-      font-size: 3rem;
-    }
-  </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FinLit AI – Student Financial Assistant</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <h1>Hello, World!</h1>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <span class="logo">💰 FinLit AI</span>
+      <nav class="nav-tabs">
+        <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+        <button class="tab-btn" data-tab="expenses">Expense Tracker</button>
+        <button class="tab-btn" data-tab="afford">Can I Afford This?</button>
+        <button class="tab-btn" data-tab="advisor">Loan & Scholarship</button>
+        <button class="tab-btn" data-tab="chat">AI Chat</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="main-content">
+
+    <!-- DASHBOARD -->
+    <section id="tab-dashboard" class="tab-section active">
+      <h2>Your Financial Dashboard</h2>
+      <div class="summary-cards">
+        <div class="card green">
+          <div class="card-label">Monthly Budget</div>
+          <div class="card-value" id="dash-budget">$0</div>
+        </div>
+        <div class="card red">
+          <div class="card-label">Total Spent</div>
+          <div class="card-value" id="dash-spent">$0</div>
+        </div>
+        <div class="card blue">
+          <div class="card-label">Remaining</div>
+          <div class="card-value" id="dash-remaining">$0</div>
+        </div>
+        <div class="card yellow">
+          <div class="card-label">Savings Goal</div>
+          <div class="card-value" id="dash-savings">$0</div>
+        </div>
+      </div>
+      <div class="dashboard-setup card-plain">
+        <h3>Set Your Monthly Budget</h3>
+        <div class="form-row">
+          <input type="number" id="budget-input" placeholder="e.g. 1200" min="0" />
+          <input type="number" id="savings-input" placeholder="Savings goal e.g. 200" min="0" />
+          <button id="set-budget-btn" class="btn-primary">Save</button>
+        </div>
+      </div>
+      <div class="tip-box" id="budget-tip"></div>
+    </section>
+
+    <!-- EXPENSE TRACKER -->
+    <section id="tab-expenses" class="tab-section">
+      <h2>Expense Tracker</h2>
+      <div class="form-card">
+        <div class="form-row">
+          <input type="text" id="exp-name" placeholder="Expense name (e.g. Groceries)" />
+          <input type="number" id="exp-amount" placeholder="Amount $" min="0" step="0.01" />
+          <select id="exp-category">
+            <option value="Food">Food</option>
+            <option value="Transport">Transport</option>
+            <option value="Rent">Rent</option>
+            <option value="Education">Education</option>
+            <option value="Entertainment">Entertainment</option>
+            <option value="Health">Health</option>
+            <option value="Other">Other</option>
+          </select>
+          <input type="date" id="exp-date" />
+          <button id="add-expense-btn" class="btn-primary">Add</button>
+        </div>
+      </div>
+      <div class="expense-table-wrap">
+        <table id="expense-table">
+          <thead>
+            <tr><th>Name</th><th>Category</th><th>Amount</th><th>Date</th><th>Action</th></tr>
+          </thead>
+          <tbody id="expense-tbody"></tbody>
+        </table>
+      </div>
+      <div class="spending-analysis" id="spending-analysis"></div>
+    </section>
+
+    <!-- CAN I AFFORD THIS -->
+    <section id="tab-afford" class="tab-section">
+      <h2>Can I Afford This?</h2>
+      <div class="form-card">
+        <p class="form-hint">Enter an item or purchase you're considering and we'll advise you based on your budget.</p>
+        <div class="form-col">
+          <input type="text" id="afford-item" placeholder="What do you want to buy? (e.g. New laptop)" />
+          <input type="number" id="afford-cost" placeholder="Cost $" min="0" step="0.01" />
+          <select id="afford-urgency">
+            <option value="want">Want (non-essential)</option>
+            <option value="need">Need (essential)</option>
+            <option value="investment">Investment (education/career)</option>
+          </select>
+          <button id="afford-btn" class="btn-primary">Analyze</button>
+        </div>
+      </div>
+      <div class="result-box" id="afford-result"></div>
+    </section>
+
+    <!-- LOAN & SCHOLARSHIP ADVISOR -->
+    <section id="tab-advisor" class="tab-section">
+      <h2>Loan & Scholarship Advisor</h2>
+      <div class="advisor-grid">
+        <div class="form-card">
+          <h3>Student Loan Calculator</h3>
+          <div class="form-col">
+            <input type="number" id="loan-amount" placeholder="Loan amount $" min="0" />
+            <input type="number" id="loan-rate" placeholder="Annual interest rate %" min="0" step="0.01" />
+            <input type="number" id="loan-years" placeholder="Repayment period (years)" min="1" />
+            <button id="loan-calc-btn" class="btn-primary">Calculate</button>
+          </div>
+          <div class="result-box" id="loan-result"></div>
+        </div>
+        <div class="form-card">
+          <h3>Scholarship Finder</h3>
+          <div class="form-col">
+            <input type="text" id="scholar-major" placeholder="Your major/field of study" />
+            <input type="number" id="scholar-gpa" placeholder="Your GPA (e.g. 3.5)" min="0" max="4" step="0.1" />
+            <select id="scholar-need">
+              <option value="merit">Merit-based</option>
+              <option value="need">Need-based</option>
+              <option value="both">Both</option>
+            </select>
+            <button id="scholar-btn" class="btn-primary">Find Scholarships</button>
+          </div>
+          <div class="result-box" id="scholar-result"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI CHAT -->
+    <section id="tab-chat" class="tab-section">
+      <h2>AI Financial Advisor Chat</h2>
+      <div class="chat-container">
+        <div class="chat-messages" id="chat-messages">
+          <div class="chat-msg bot">
+            <span class="chat-avatar">🤖</span>
+            <div class="chat-bubble">Hi! I'm your FinLit AI advisor powered by IBM Bob. Ask me anything about budgeting, loans, scholarships, or managing your student finances!</div>
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <input type="text" id="chat-input" placeholder="Ask me about budgeting, loans, expenses..." />
+          <button id="chat-send-btn" class="btn-primary">Send</button>
+        </div>
+        <div class="quick-prompts">
+          <span>Quick ask:</span>
+          <button class="quick-btn" data-q="How do I create a student budget?">Create a budget</button>
+          <button class="quick-btn" data-q="What is compound interest?">Compound interest</button>
+          <button class="quick-btn" data-q="How do student loans work?">Student loans</button>
+          <button class="quick-btn" data-q="Tips to save money as a student">Saving tips</button>
+          <button class="quick-btn" data-q="What is the 50/30/20 budget rule?">50/30/20 rule</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
 </body>
 </html>
