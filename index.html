@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FinLit AI – Student Financial Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -24,7 +27,83 @@
 
     <!-- DASHBOARD -->
     <section id="tab-dashboard" class="tab-section active">
-      <h2>Your Financial Dashboard</h2>
+      <div class="dashboard-header-row">
+        <div>
+          <h2>Your Financial Dashboard</h2>
+          <p class="section-desc">Track real-time reserves, manage your student budget, and see your money in action.</p>
+        </div>
+      </div>
+
+      <!-- INTERACTIVE MONEY VAULT & COIN DISPLAY -->
+      <div class="vault-card" id="vault-card">
+        <div class="vault-header">
+          <div class="vault-title-group">
+            <span class="vault-icon">🏛️</span>
+            <div>
+              <h3>Interactive Treasury & Money Vault</h3>
+              <p class="vault-subtitle">Visual cash & coin reserves — watch money fly away as you spend!</p>
+            </div>
+          </div>
+          <div class="vault-header-actions">
+            <span class="vault-badge" id="vault-status-badge">Loaded Reserves 🟢</span>
+            <button id="vault-sound-btn" class="sound-toggle-btn" title="Toggle Sound FX">🔊 Sound ON</button>
+          </div>
+        </div>
+
+        <div class="vault-stage-wrapper">
+          <!-- Live Balance Floating Banner -->
+          <div class="vault-balance-hud">
+            <span class="hud-label">Remaining Money & Coin Balance</span>
+            <div class="hud-amount-row">
+              <span class="hud-amount" id="vault-balance-num">$0.00</span>
+              <span class="hud-pct-badge" id="vault-balance-pct">100% Left</span>
+            </div>
+            <div class="vault-meter-bar">
+              <div class="vault-meter-fill" id="vault-meter-fill" style="width: 100%;"></div>
+            </div>
+          </div>
+
+          <!-- Interactive 3D Visual Money Stage -->
+          <div class="vault-stage" id="vault-stage" title="Click anywhere on the vault to test coin bounce!">
+            <div class="ambient-glow" id="ambient-glow"></div>
+            
+            <!-- Particle & Flying Elements Container (Flying bills, coins, spend badges) -->
+            <div class="flying-particles-layer" id="flying-particles-layer"></div>
+
+            <!-- 3D Pedestal & Money Pile -->
+            <div class="pedestal-container" id="pedestal-container">
+              <div class="pedestal-platform">
+                <div class="pedestal-top"></div>
+                <div class="pedestal-rim"></div>
+              </div>
+
+              <!-- Dynamic Cash Stacks & Coin Piles -->
+              <div class="money-pile" id="money-pile">
+                <!-- Dynamically populated stacks of cash and gold coins -->
+              </div>
+            </div>
+
+            <!-- Empty Vault Notice (if balance <= 0) -->
+            <div class="vault-empty-alert" id="vault-empty-alert" style="display: none;">
+              <span class="empty-icon">📭</span>
+              <span class="empty-title">Vault Depleted!</span>
+              <p>You've spent your allocated budget. Adjust budget or add funds.</p>
+            </div>
+          </div>
+
+          <!-- Vault Quick Interactive Sandbox Bar -->
+          <div class="vault-interactive-bar">
+            <span class="sandbox-label">Interactive Spend Test:</span>
+            <div class="sandbox-buttons">
+              <button class="test-spend-btn" data-amt="15" title="Test spending $15">Spend $15 ☕</button>
+              <button class="test-spend-btn" data-amt="50" title="Test spending $50">Spend $50 🛒</button>
+              <button class="test-spend-btn" data-amt="100" title="Test spending $100">Spend $100 🎒</button>
+              <button class="test-replenish-btn" data-amt="100" title="Deposit $100 back to pile">+ Add $100 💰</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="summary-cards">
         <div class="card green">
           <div class="card-label">Monthly Budget</div>
@@ -56,7 +135,16 @@
 
     <!-- EXPENSE TRACKER -->
     <section id="tab-expenses" class="tab-section">
-      <h2>Expense Tracker</h2>
+      <div class="expense-header-group">
+        <h2>Expense Tracker</h2>
+        <!-- Live mini vault status widget with fly-away badge -->
+        <div class="mini-vault-pill" id="mini-vault-pill">
+          <span class="mini-vault-icon">💰</span>
+          <span class="mini-vault-label">Remaining Vault:</span>
+          <strong id="mini-vault-balance" class="mini-vault-balance">$0.00</strong>
+          <span id="mini-vault-flyer-anchor"></span>
+        </div>
+      </div>
       <div class="form-card">
         <div class="form-row">
           <input type="text" id="exp-name" placeholder="Expense name (e.g. Groceries)" />

@@ -1,26 +1,35 @@
 /* ===================================================
    FinLit AI – app.js
-   Modules:
-     1. State & Persistence
-     2. Tab Navigation
-     3. Dashboard
-     4. Expense Tracker
-     5. Can I Afford This?
-     6. Loan & Scholarship Advisor
-     7. AI Chat
-=================================================== */
+   Interactive Financial Assistant with 3D Money Vault
+   and Physics Flying Cash & Coin Spending Animations
+   =================================================== */
 
 // ── 1. State & Persistence ────────────────────────
 const STATE_KEY = 'finlit_state';
+const SOUND_KEY = 'finlit_sound_enabled';
 
 function loadState() {
   try {
     return JSON.parse(localStorage.getItem(STATE_KEY)) || {
-      budget: 0,
-      savingsGoal: 0,
-      expenses: []
+      budget: 1500,
+      savingsGoal: 300,
+      expenses: [
+        { name: 'Semester Textbooks', amount: 180, category: 'Education', date: '2026-09-01' },
+        { name: 'Weekly Groceries', amount: 65, category: 'Food', date: '2026-09-02' },
+        { name: 'Campus Bus Pass', amount: 45, category: 'Transport', date: '2026-09-03' }
+      ]
     };
-  } catch { return { budget: 0, savingsGoal: 0, expenses: [] }; }
+  } catch {
+    return {
+      budget: 1500,
+      savingsGoal: 300,
+      expenses: [
+        { name: 'Semester Textbooks', amount: 180, category: 'Education', date: '2026-09-01' },
+        { name: 'Weekly Groceries', amount: 65, category: 'Food', date: '2026-09-02' },
+        { name: 'Campus Bus Pass', amount: 45, category: 'Transport', date: '2026-09-03' }
+      ]
+    };
+  }
 }
 
 function saveState(state) {
@@ -28,8 +37,122 @@ function saveState(state) {
 }
 
 let state = loadState();
+let soundEnabled = localStorage.getItem(SOUND_KEY) !== 'false'; // default true
+let currentDisplayedBalance = 0;
 
-// ── 2. Tab Navigation ─────────────────────────────
+// ── 2. Procedural Web Audio FX ────────────────────
+const audioCtx = (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext))
+  ? new (window.AudioContext || window.webkitAudioContext)()
+  : null;
+
+function resumeAudio() {
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
+function playCoinSound(frequency = 1200, decay = 0.25) {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    resumeAudio();
+    const now = audioCtx.currentTime;
+
+    // Carrier oscillator (crisp metallic sine chime)
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(frequency, now);
+    osc.frequency.exponentialRampToValueAtTime(frequency * 1.5, now + 0.04);
+    osc.frequency.exponentialRampToValueAtTime(frequency * 0.8, now + decay);
+
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + decay);
+
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    osc.start(now);
+    osc.stop(now + decay);
+  } catch (e) {
+    // Graceful fallback
+  }
+}
+
+function playWhooshSound() {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    resumeAudio();
+    const now = audioCtx.currentTime;
+    const duration = 0.35;
+
+    // Aerodynamic white noise flutter for bills
+    const bufferSize = audioCtx.sampleRate * duration;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1;
+    }
+
+    const noise = audioCtx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(500, now);
+    filter.frequency.exponentialRampToValueAtTime(1400, now + duration * 0.5);
+    filter.frequency.exponentialRampToValueAtTime(300, now + duration);
+    filter.Q.setValueAtTime(3, now);
+
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.linearRampToValueAtTime(0.15, now + duration * 0.3);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    noise.start(now);
+    noise.stop(now + duration);
+  } catch (e) {}
+}
+
+function playChaChingSound() {
+  if (!soundEnabled || !audioCtx) return;
+  try {
+    resumeAudio();
+    // Upbeat ascending arpeggio chord
+    const notes = [659.25, 830.61, 987.77, 1318.51]; // E5, G#5, B5, E6
+    notes.forEach((freq, idx) => {
+      setTimeout(() => playCoinSound(freq, 0.4), idx * 60);
+    });
+  } catch (e) {}
+}
+
+// Sound toggle UI handler
+const soundBtn = document.getElementById('vault-sound-btn');
+function updateSoundBtnUI() {
+  if (!soundBtn) return;
+  if (soundEnabled) {
+    soundBtn.textContent = '🔊 Sound ON';
+    soundBtn.style.color = '#34d399';
+  } else {
+    soundBtn.textContent = '🔇 Sound OFF';
+    soundBtn.style.color = '#94a3b8';
+  }
+}
+if (soundBtn) {
+  soundBtn.addEventListener('click', () => {
+    soundEnabled = !soundEnabled;
+    localStorage.setItem(SOUND_KEY, soundEnabled ? 'true' : 'false');
+    updateSoundBtnUI();
+    if (soundEnabled) playCoinSound(1000, 0.2);
+  });
+  updateSoundBtnUI();
+}
+
+// ── 3. Tab Navigation ─────────────────────────────
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -41,7 +164,395 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
-// ── 3. Dashboard ──────────────────────────────────
+// ── 4. Formatting Helpers ─────────────────────────
+function fmt(n) {
+  return '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Smooth Number Counter Animation
+function animateBalanceCounter(targetVal) {
+  const numEl = document.getElementById('vault-balance-num');
+  const miniEl = document.getElementById('mini-vault-balance');
+  if (!numEl) return;
+
+  const startVal = currentDisplayedBalance;
+  const startTime = performance.now();
+  const duration = 650; // ms
+
+  function updateCount(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    // Ease-out cubic
+    const ease = 1 - Math.pow(1 - progress, 3);
+    const curr = startVal + (targetVal - startVal) * ease;
+
+    const formatted = (curr < 0 ? '-' : '') + fmt(curr);
+    numEl.textContent = formatted;
+    if (miniEl) miniEl.textContent = formatted;
+
+    if (curr < 0) {
+      numEl.classList.add('negative');
+    } else {
+      numEl.classList.remove('negative');
+    }
+
+    if (progress < 1) {
+      requestAnimationFrame(updateCount);
+    } else {
+      currentDisplayedBalance = targetVal;
+    }
+  }
+
+  requestAnimationFrame(updateCount);
+}
+
+// ── 5. Dynamic Money Vault & Coin Pile Engine ─────
+function renderMoneyPile(remaining, budget) {
+  const pileContainer = document.getElementById('money-pile');
+  const emptyAlert = document.getElementById('vault-empty-alert');
+  const statusBadge = document.getElementById('vault-status-badge');
+  const pctBadge = document.getElementById('vault-balance-pct');
+  const meterFill = document.getElementById('vault-meter-fill');
+  const ambientGlow = document.getElementById('ambient-glow');
+
+  if (!pileContainer) return;
+
+  // Clear previous pile items
+  pileContainer.innerHTML = '';
+
+  const pct = budget > 0 ? (remaining / budget) * 100 : 0;
+  animateBalanceCounter(remaining);
+
+  // Meter Fill & Percentage Badge
+  if (meterFill) {
+    const displayPct = Math.max(0, Math.min(100, pct));
+    meterFill.style.width = displayPct + '%';
+    meterFill.className = 'vault-meter-fill' + (pct <= 20 ? ' danger' : pct <= 50 ? ' warning' : '');
+  }
+
+  if (pctBadge) {
+    if (pct <= 0) {
+      pctBadge.textContent = '0% (Overspent)';
+      pctBadge.className = 'hud-pct-badge danger';
+    } else {
+      pctBadge.textContent = `${pct.toFixed(0)}% Left`;
+      pctBadge.className = 'hud-pct-badge' + (pct <= 20 ? ' danger' : pct <= 50 ? ' warning' : '');
+    }
+  }
+
+  // Status Badge & Ambient Glow
+  if (statusBadge && ambientGlow) {
+    if (remaining <= 0) {
+      statusBadge.textContent = 'Vault Depleted 🔴';
+      statusBadge.className = 'vault-badge danger';
+      ambientGlow.className = 'ambient-glow danger';
+    } else if (pct <= 25) {
+      statusBadge.textContent = 'Low Reserves 🟠';
+      statusBadge.className = 'vault-badge danger';
+      ambientGlow.className = 'ambient-glow danger';
+    } else if (pct <= 55) {
+      statusBadge.textContent = 'Moderate Funds 🟡';
+      statusBadge.className = 'vault-badge warning';
+      ambientGlow.className = 'ambient-glow warning';
+    } else {
+      statusBadge.textContent = 'Loaded Reserves 🟢';
+      statusBadge.className = 'vault-badge';
+      ambientGlow.className = 'ambient-glow';
+    }
+  }
+
+  // If completely depleted
+  if (remaining <= 0) {
+    if (emptyAlert) emptyAlert.style.display = 'block';
+    return;
+  } else {
+    if (emptyAlert) emptyAlert.style.display = 'none';
+  }
+
+  // Calculate pile volume tiers based on remaining funds
+  // Tier 1 (Small): 1 bundle, 8 coins
+  // Tier 2 (Medium): 2-3 bundles, 16 coins
+  // Tier 3 (Full): 4-5 bundles, 28 coins
+  // Tier 4 (Overflowing): 6 bundles, 40+ coins
+  let numBundles = 1;
+  let numCoins = 10;
+
+  if (remaining > 1500) {
+    numBundles = 6;
+    numCoins = 42;
+  } else if (remaining > 900) {
+    numBundles = 4;
+    numCoins = 32;
+  } else if (remaining > 400) {
+    numBundles = 3;
+    numCoins = 22;
+  } else if (remaining > 150) {
+    numBundles = 2;
+    numCoins = 14;
+  }
+
+  // 1. Position Cash Bundles on the Pedestal
+  const bundleConfigs = [
+    { x: -50, y: 15, rotZ: -12, scale: 1 },
+    { x: 35, y: 18, rotZ: 10, scale: 1 },
+    { x: -10, y: 35, rotZ: 4, scale: 0.98 },
+    { x: 55, y: 40, rotZ: -8, scale: 0.95 },
+    { x: -65, y: 45, rotZ: 14, scale: 0.92 },
+    { x: 10, y: 60, rotZ: -3, scale: 0.9 }
+  ];
+
+  for (let b = 0; b < Math.min(numBundles, bundleConfigs.length); b++) {
+    const cfg = bundleConfigs[b];
+    const bundle = document.createElement('div');
+    bundle.className = 'cash-bundle';
+    bundle.style.left = `calc(50% + ${cfg.x}px)`;
+    bundle.style.bottom = `${cfg.y}px`;
+    bundle.style.transform = `translateX(-50%) rotateZ(${cfg.rotZ}deg) scale(${cfg.scale})`;
+    bundle.title = 'Crisp $100 Reserve Bundle';
+
+    const band = document.createElement('span');
+    band.className = 'bill-band';
+    bundle.appendChild(band);
+
+    bundle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      playWhooshSound();
+      playCoinSound(1400, 0.2);
+      bundle.style.transform = `translateX(-50%) translateY(-10px) rotateZ(${cfg.rotZ + 5}deg) scale(1.15)`;
+      setTimeout(() => {
+        bundle.style.transform = `translateX(-50%) rotateZ(${cfg.rotZ}deg) scale(${cfg.scale})`;
+      }, 300);
+    });
+
+    pileContainer.appendChild(bundle);
+  }
+
+  // 2. Position Golden Coins (staggered stacks and scattered gold)
+  const coinSeeds = [
+    // Center stack
+    { x: -15, y: 6, rot: 5 }, { x: -15, y: 14, rot: -3 }, { x: -15, y: 22, rot: 4 }, { x: -15, y: 30, rot: -2 },
+    // Left stack
+    { x: -85, y: 4, rot: -10 }, { x: -85, y: 12, rot: 8 }, { x: -85, y: 20, rot: -5 },
+    // Right stack
+    { x: 75, y: 5, rot: 12 }, { x: 75, y: 13, rot: -8 }, { x: 75, y: 21, rot: 6 },
+    // Foreground scattering
+    { x: -55, y: -4, rot: 25 }, { x: -30, y: -2, rot: -15 }, { x: 5, y: -5, rot: 18 }, { x: 40, y: -3, rot: -20 }, { x: 95, y: -2, rot: 14 },
+    // Mid-ground layers
+    { x: -110, y: 8, rot: 30 }, { x: 110, y: 10, rot: -25 }, { x: -40, y: 28, rot: 12 }, { x: 25, y: 30, rot: -14 },
+    { x: -70, y: 35, rot: -18 }, { x: 60, y: 38, rot: 15 }, { x: -5, y: 50, rot: 8 }, { x: 30, y: 52, rot: -6 },
+    // Upper crests for large balances
+    { x: -25, y: 68, rot: 10 }, { x: 15, y: 70, rot: -12 }, { x: -50, y: 60, rot: 20 }, { x: 45, y: 62, rot: -15 },
+    { x: 0, y: 85, rot: 4 }, { x: -12, y: 95, rot: -8 }, { x: 10, y: 98, rot: 6 },
+    { x: -75, y: 18, rot: -15 }, { x: 85, y: 19, rot: 12 }, { x: -100, y: 2, rot: 28 }, { x: 105, y: 3, rot: -22 },
+    { x: -35, y: 45, rot: -5 }, { x: 40, y: 46, rot: 9 }, { x: -60, y: 52, rot: 14 }, { x: 65, y: 54, rot: -11 },
+    { x: -2, y: 110, rot: 0 }
+  ];
+
+  for (let c = 0; c < Math.min(numCoins, coinSeeds.length); c++) {
+    const s = coinSeeds[c];
+    const coin = document.createElement('div');
+    coin.className = 'gold-coin';
+    coin.style.left = `calc(50% + ${s.x}px)`;
+    coin.style.bottom = `${s.y}px`;
+    coin.style.transform = `translateX(-50%) rotate(${s.rot}deg)`;
+    coin.title = 'Shiny Golden Coin ($)';
+
+    // Playful bounce & coin chime on click
+    coin.addEventListener('click', (e) => {
+      e.stopPropagation();
+      playCoinSound(1300 + Math.random() * 400, 0.2);
+      coin.style.transform = `translateX(-50%) translateY(-14px) scale(1.2) rotate(${s.rot + 25}deg)`;
+      setTimeout(() => {
+        coin.style.transform = `translateX(-50%) rotate(${s.rot}deg)`;
+      }, 250);
+    });
+
+    pileContainer.appendChild(coin);
+  }
+
+  // 3. Shimmering Ambient Sparkles
+  for (let sp = 0; sp < 4; sp++) {
+    const sparkle = document.createElement('div');
+    sparkle.className = 'shimmer-sparkle';
+    sparkle.style.left = `calc(50% + ${(Math.random() * 180 - 90)}px)`;
+    sparkle.style.bottom = `${Math.random() * 90 + 20}px`;
+    sparkle.style.animationDelay = `${(sp * 0.6)}s`;
+    pileContainer.appendChild(sparkle);
+  }
+}
+
+// ── 6. 3D Parallax Tilt Effect ────────────────────
+function initVault3DTilt() {
+  const stage = document.getElementById('vault-stage');
+  const pedestal = document.getElementById('pedestal-container');
+  if (!stage || !pedestal) return;
+
+  stage.addEventListener('mousemove', (e) => {
+    const rect = stage.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+
+    const rotY = (x / (rect.width / 2)) * 14;
+    const rotX = -((y / (rect.height / 2)) * 10);
+
+    pedestal.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+  });
+
+  stage.addEventListener('mouseleave', () => {
+    pedestal.style.transform = 'rotateX(0deg) rotateY(0deg)';
+  });
+
+  // Stage click: coin clinks
+  stage.addEventListener('click', (e) => {
+    if (e.target === stage || e.target.classList.contains('ambient-glow') || e.target.classList.contains('pedestal-top')) {
+      playCoinSound(1200 + Math.random() * 300, 0.25);
+      pedestal.classList.add('shake');
+      setTimeout(() => pedestal.classList.remove('shake'), 450);
+    }
+  });
+}
+
+// ── 7. FLYING AWAY SPENDING ANIMATION SYSTEM ──────
+function triggerSpendFlyAway(amount, label = 'Spent') {
+  const particlesLayer = document.getElementById('flying-particles-layer');
+  const pedestal = document.getElementById('pedestal-container');
+  if (!particlesLayer) return;
+
+  // Shake the pedestal when money is extracted
+  if (pedestal) {
+    pedestal.classList.remove('shake');
+    void pedestal.offsetWidth; // Force reflow
+    pedestal.classList.add('shake');
+    setTimeout(() => pedestal.classList.remove('shake'), 500);
+  }
+
+  // Play realistic sounds
+  playWhooshSound();
+  setTimeout(() => playCoinSound(1400, 0.3), 80);
+  setTimeout(() => playCoinSound(1650, 0.25), 180);
+
+  // Number of particles based on expense amount
+  const billCount = Math.min(7, Math.max(3, Math.floor(amount / 20)));
+  const coinCount = Math.min(12, Math.max(5, Math.floor(amount / 10)));
+
+  // Center coordinates of the vault stage
+  const originX = particlesLayer.offsetWidth / 2;
+  const originY = particlesLayer.offsetHeight * 0.72;
+
+  // 1. Spawn Fluttering 3D Bills
+  for (let i = 0; i < billCount; i++) {
+    const bill = document.createElement('div');
+    bill.className = 'flying-bill';
+
+    // Random trajectory: fly left, right, or upwards with aerodynamic wind drift
+    const angle = (Math.PI * 0.65) + (Math.random() * Math.PI * 0.7); // upward fan
+    const distance = 160 + Math.random() * 160;
+    const dx = Math.cos(angle) * distance;
+    const dy = -Math.abs(Math.sin(angle) * distance) - 40;
+
+    bill.style.setProperty('--dx', `${dx}px`);
+    bill.style.setProperty('--dy', `${dy}px`);
+    bill.style.left = `${originX + (Math.random() * 60 - 30)}px`;
+    bill.style.top = `${originY + (Math.random() * 30 - 15)}px`;
+    bill.style.animationDelay = `${i * 0.08}s`;
+
+    particlesLayer.appendChild(bill);
+    setTimeout(() => bill.remove(), 1400);
+  }
+
+  // 2. Spawn Spinning Gold Coins
+  for (let j = 0; j < coinCount; j++) {
+    const coin = document.createElement('div');
+    coin.className = 'flying-coin';
+
+    const angle = (Math.random() * Math.PI); // full upper arc
+    const distance = 130 + Math.random() * 150;
+    const dx = Math.cos(angle) * distance;
+    const dy = -Math.abs(Math.sin(angle) * distance) - 60;
+
+    coin.style.setProperty('--dx', `${dx}px`);
+    coin.style.setProperty('--dy', `${dy}px`);
+    coin.style.left = `${originX + (Math.random() * 70 - 35)}px`;
+    coin.style.top = `${originY + (Math.random() * 30 - 15)}px`;
+    coin.style.animationDelay = `${j * 0.05 + 0.05}s`;
+
+    particlesLayer.appendChild(coin);
+    setTimeout(() => coin.remove(), 1300);
+  }
+
+  // 3. Floating Red Spend Badge (-$XX.XX 💸)
+  const tag = document.createElement('div');
+  tag.className = 'spend-fly-tag';
+  tag.textContent = `-${fmt(amount)} 💸`;
+  tag.style.setProperty('--start-x', `${(Math.random() * 60 - 30)}px`);
+  tag.style.left = `${originX - 50}px`;
+  tag.style.top = `${originY - 50}px`;
+
+  particlesLayer.appendChild(tag);
+  setTimeout(() => tag.remove(), 1500);
+
+  // 4. Also trigger mini flyout if user is looking at Expense tab
+  triggerMiniExpenseFlyout(amount);
+}
+
+// Reverse Celebratory Refund / Fund Deposit Animation
+function triggerRefundRain(amount) {
+  const particlesLayer = document.getElementById('flying-particles-layer');
+  if (!particlesLayer) return;
+
+  playChaChingSound();
+
+  const originX = particlesLayer.offsetWidth / 2;
+  const originY = particlesLayer.offsetHeight * 0.72;
+
+  // Rain in green bills and gold coins
+  for (let i = 0; i < 6; i++) {
+    const bill = document.createElement('div');
+    bill.className = 'flying-bill refund-rain-item';
+    const dx = (Math.random() * 220 - 110);
+    bill.style.setProperty('--dx', `${dx}px`);
+    bill.style.left = `${originX + dx}px`;
+    bill.style.top = `${originY - 40}px`;
+    bill.style.animationDelay = `${i * 0.09}s`;
+
+    particlesLayer.appendChild(bill);
+    setTimeout(() => bill.remove(), 1300);
+  }
+
+  // Floating Green Refund Tag (+$XX.XX 💰)
+  const tag = document.createElement('div');
+  tag.className = 'refund-fly-tag';
+  tag.textContent = `+${fmt(amount)} 💰`;
+  tag.style.setProperty('--start-x', `${(Math.random() * 40 - 20)}px`);
+  tag.style.left = `${originX - 50}px`;
+  tag.style.top = `${originY - 50}px`;
+
+  particlesLayer.appendChild(tag);
+  setTimeout(() => tag.remove(), 1500);
+}
+
+// Mini flyout on Expense Tracker tab pill
+function triggerMiniExpenseFlyout(amount) {
+  const anchor = document.getElementById('mini-vault-flyer-anchor');
+  if (!anchor) return;
+
+  const miniTag = document.createElement('div');
+  miniTag.className = 'spend-fly-tag';
+  miniTag.style.position = 'absolute';
+  miniTag.style.top = '-10px';
+  miniTag.style.left = '50%';
+  miniTag.style.fontSize = '0.78rem';
+  miniTag.style.padding = '4px 10px';
+  miniTag.textContent = `-${fmt(amount)} 💸`;
+
+  anchor.appendChild(miniTag);
+  setTimeout(() => miniTag.remove(), 1400);
+}
+
+// ── 8. Dashboard & Expense Logic ──────────────────
 function refreshDashboard() {
   const spent = state.expenses.reduce((s, e) => s + e.amount, 0);
   const remaining = state.budget - spent;
@@ -51,16 +562,20 @@ function refreshDashboard() {
   document.getElementById('dash-remaining').textContent = fmt(remaining);
   document.getElementById('dash-savings').textContent   = fmt(state.savingsGoal);
 
+  // Render the interactive 3D money pile & live HUD
+  renderMoneyPile(remaining, state.budget);
+
+  // Tip box
   const tip = document.getElementById('budget-tip');
   if (state.budget > 0) {
     const pct = (spent / state.budget) * 100;
     let msg = '';
-    if (pct >= 100)      msg = `⚠️ You've exceeded your budget by ${fmt(spent - state.budget)}. Review your expenses immediately.`;
-    else if (pct >= 80)  msg = `🔶 You've used ${pct.toFixed(0)}% of your budget. Be careful with remaining spending.`;
-    else if (pct >= 50)  msg = `✅ You've used ${pct.toFixed(0)}% of your budget. You're on track — keep it up!`;
-    else                 msg = `🌟 Great job! You've only spent ${pct.toFixed(0)}% of your budget so far.`;
+    if (pct >= 100)      msg = `⚠️ You've exceeded your monthly budget by ${fmt(spent - state.budget)}. Review your expenses immediately to prevent further deficit.`;
+    else if (pct >= 80)  msg = `🔶 You've used ${pct.toFixed(0)}% of your budget. Be cautious with discretionary spending.`;
+    else if (pct >= 50)  msg = `✅ You've used ${pct.toFixed(0)}% of your budget. You're on track — keep maintaining this discipline!`;
+    else                 msg = `🌟 Fantastic! You've only spent ${pct.toFixed(0)}% of your budget so far. Your vault is loaded.`;
     if (remaining < state.savingsGoal)
-      msg += ` Note: your remaining balance is below your savings goal of ${fmt(state.savingsGoal)}.`;
+      msg += ` Note: Your remaining balance is below your target savings goal of ${fmt(state.savingsGoal)}.`;
     tip.textContent = msg;
     tip.className = 'tip-box show';
   } else {
@@ -71,34 +586,80 @@ function refreshDashboard() {
 document.getElementById('set-budget-btn').addEventListener('click', () => {
   const b = parseFloat(document.getElementById('budget-input').value) || 0;
   const s = parseFloat(document.getElementById('savings-input').value) || 0;
+  const oldBudget = state.budget;
+
   state.budget = b;
   state.savingsGoal = s;
   saveState(state);
+
+  if (b > oldBudget) {
+    triggerRefundRain(b - oldBudget);
+  }
   refreshDashboard();
 });
 
-// ── 4. Expense Tracker ────────────────────────────
-function fmt(n) {
-  return '$' + Math.abs(n).toFixed(2);
-}
+// ── 9. Interactive Sandbox Test Buttons ───────────
+document.querySelectorAll('.test-spend-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const amt = parseFloat(btn.dataset.amt);
+    if (amt > 0) {
+      // Add a quick demo expense
+      const titles = { 15: 'Coffee & Snack ☕', 50: 'Campus Groceries 🛒', 100: 'Course Supplies 🎒' };
+      const expName = titles[amt] || 'Quick Spend';
+      state.expenses.unshift({
+        name: expName,
+        amount: amt,
+        category: 'Food',
+        date: new Date().toISOString().split('T')[0]
+      });
+      saveState(state);
 
+      // Trigger spectacular flying-away animations
+      triggerSpendFlyAway(amt, expName);
+      refreshDashboard();
+      renderExpenses();
+    }
+  });
+});
+
+document.querySelectorAll('.test-replenish-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const amt = parseFloat(btn.dataset.amt);
+    if (amt > 0) {
+      // Deposit money to budget
+      state.budget += amt;
+      saveState(state);
+      triggerRefundRain(amt);
+      refreshDashboard();
+    }
+  });
+});
+
+// ── 10. Expense Tracker Handlers ──────────────────
 function renderExpenses() {
   const tbody = document.getElementById('expense-tbody');
   tbody.innerHTML = '';
   if (state.expenses.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888;padding:20px">No expenses added yet.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888;padding:22px">No expenses added yet. Add an expense above to see money fly away!</td></tr>';
   } else {
     state.expenses.forEach((exp, i) => {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${escHtml(exp.name)}</td>
+        <td><strong>${escHtml(exp.name)}</strong></td>
         <td><span class="cat-badge">${escHtml(exp.category)}</span></td>
-        <td><strong>${fmt(exp.amount)}</strong></td>
+        <td><strong style="color:#dc2626">${fmt(exp.amount)}</strong></td>
         <td>${exp.date || '—'}</td>
-        <td><button class="del-btn" data-i="${i}">Remove</button></td>`;
+        <td><button class="del-btn" data-i="${i}" title="Remove and refund to vault">Remove</button></td>`;
       tbody.appendChild(tr);
     });
   }
+
+  // Also update mini balance pill in Expense Tracker
+  const spent = state.expenses.reduce((s, e) => s + e.amount, 0);
+  const remaining = state.budget - spent;
+  const miniEl = document.getElementById('mini-vault-balance');
+  if (miniEl) miniEl.textContent = (remaining < 0 ? '-' : '') + fmt(remaining);
+
   renderSpendingAnalysis();
 }
 
@@ -112,7 +673,7 @@ function renderSpendingAnalysis() {
   });
   const grandTotal = Object.values(totals).reduce((a, b) => a + b, 0);
 
-  let html = '<h4>Spending by Category</h4>';
+  let html = '<h4>Spending Breakdown by Category</h4>';
   Object.entries(totals).sort((a, b) => b[1] - a[1]).forEach(([cat, amt]) => {
     const pct = grandTotal > 0 ? (amt / grandTotal) * 100 : 0;
     html += `
@@ -124,12 +685,14 @@ function renderSpendingAnalysis() {
   });
 
   // Pattern insights
-  html += '<div style="margin-top:14px;font-size:0.85rem;color:#57606a;">';
+  html += '<div style="margin-top:16px;font-size:0.88rem;color:#64748b;line-height:1.5;">';
   const topCat = Object.entries(totals).sort((a,b) => b[1]-a[1])[0];
-  html += `<strong>Top spending category:</strong> ${topCat[0]} (${fmt(topCat[1])} — ${((topCat[1]/grandTotal)*100).toFixed(0)}% of total)`;
+  if (topCat) {
+    html += `<strong>Top spending category:</strong> <span style="color:#0f2742">${topCat[0]}</span> (${fmt(topCat[1])} — ${((topCat[1]/grandTotal)*100).toFixed(0)}% of total)`;
+  }
   if (state.budget > 0) {
     const remaining = state.budget - grandTotal;
-    html += ` &nbsp;|&nbsp; <strong>Budget remaining:</strong> ${remaining >= 0 ? fmt(remaining) : '-'+fmt(Math.abs(remaining))}`;
+    html += ` &nbsp;|&nbsp; <strong>Vault remaining:</strong> <span style="color:${remaining >= 0 ? '#10b981' : '#ef4444'}; font-weight:700;">${remaining >= 0 ? fmt(remaining) : '-'+fmt(Math.abs(remaining))}</span>`;
   }
   html += '</div>';
 
@@ -143,31 +706,39 @@ document.getElementById('add-expense-btn').addEventListener('click', () => {
   const date   = document.getElementById('exp-date').value;
 
   if (!name || isNaN(amount) || amount <= 0) {
-    alert('Please enter a valid expense name and amount.');
+    alert('Please enter a valid expense name and positive amount.');
     return;
   }
-  state.expenses.push({ name, amount, category: cat, date });
+
+  state.expenses.unshift({ name, amount, category: cat, date });
   saveState(state);
+
+  // Trigger the fly-away animation
+  triggerSpendFlyAway(amount, name);
+
   renderExpenses();
+  refreshDashboard();
+
   document.getElementById('exp-name').value   = '';
   document.getElementById('exp-amount').value = '';
-  document.getElementById('exp-date').value   = '';
 });
 
 document.getElementById('expense-tbody').addEventListener('click', e => {
   if (e.target.classList.contains('del-btn')) {
     const i = parseInt(e.target.dataset.i);
-    state.expenses.splice(i, 1);
+    const removed = state.expenses.splice(i, 1)[0];
     saveState(state);
+
+    if (removed && removed.amount > 0) {
+      triggerRefundRain(removed.amount);
+    }
+
     renderExpenses();
+    refreshDashboard();
   }
 });
 
-function escHtml(s) {
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-// ── 5. Can I Afford This? ─────────────────────────
+// ── 11. Can I Afford This? ────────────────────────
 document.getElementById('afford-btn').addEventListener('click', () => {
   const item     = document.getElementById('afford-item').value.trim();
   const cost     = parseFloat(document.getElementById('afford-cost').value);
@@ -186,7 +757,6 @@ document.getElementById('afford-btn').addEventListener('click', () => {
   let msg = '', cls = '';
 
   if (remaining === null) {
-    // No budget set — generic advice
     if (urgency === 'need') {
       msg = `📋 <strong>${escHtml(item)}</strong> costs <strong>${fmt(cost)}</strong>. Since it's a necessity, prioritize it — but set a monthly budget first so you can track affordability over time.`;
       cls = 'warn';
@@ -200,21 +770,22 @@ document.getElementById('afford-btn').addEventListener('click', () => {
   } else if (afterBuy >= state.savingsGoal) {
     msg = `✅ <strong>Yes, you can afford it!</strong><br>
       Item: <strong>${escHtml(item)}</strong> — ${fmt(cost)}<br>
-      Budget remaining before purchase: <strong>${fmt(remaining)}</strong><br>
-      Budget remaining after purchase: <strong>${fmt(afterBuy)}</strong><br>
-      Your savings goal of ${fmt(state.savingsGoal)} is still safe. Go ahead!`;
+      Vault balance before purchase: <strong>${fmt(remaining)}</strong><br>
+      Vault balance after purchase: <strong>${fmt(afterBuy)}</strong><br>
+      Your savings goal of ${fmt(state.savingsGoal)} will remain completely intact.`;
     cls = 'good';
   } else if (afterBuy >= 0) {
     msg = `⚠️ <strong>Possible, but tight.</strong><br>
       Item: <strong>${escHtml(item)}</strong> — ${fmt(cost)}<br>
-      After buying, you'd have <strong>${fmt(afterBuy)}</strong> left — below your savings goal of ${fmt(state.savingsGoal)}.<br>
-      ${urgency === 'want' ? 'Consider waiting until next month.' : urgency === 'investment' ? 'An investment — consider if it can be financed or deferred.' : 'It\'s a need — try to cut other expenses to compensate.'}`;
+      After buying, you'd only have <strong>${fmt(afterBuy)}</strong> left — dipping into your savings goal of ${fmt(state.savingsGoal)}.<br>
+      ${urgency === 'want' ? 'Consider waiting until next month.' : urgency === 'investment' ? 'An investment — consider if it can be financed or deferred.' : 'It\'s a necessity — try trimming other expenses to compensate.'}`;
     cls = 'warn';
   } else {
     msg = `❌ <strong>You cannot afford this right now.</strong><br>
       Item: <strong>${escHtml(item)}</strong> — ${fmt(cost)}<br>
-      You only have <strong>${fmt(remaining)}</strong> left in your budget this month.<br>
-      ${urgency === 'want' ? 'Wait until next month or save up.' : urgency === 'investment' ? 'Look for student loans, scholarships, or payment plans.' : 'This is urgent — check the Loan & Scholarship Advisor tab for funding options.'}`;
+      You only have <strong>${fmt(remaining)}</strong> left in your vault this month.<br>
+      Buying this would put your vault in deficit by <strong>${fmt(Math.abs(afterBuy))}</strong>.<br>
+      ${urgency === 'want' ? 'Wait until next month or save up.' : urgency === 'investment' ? 'Look for student grants, scholarships, or payment plans.' : 'This is urgent — check the Loan & Scholarship Advisor tab for funding options.'}`;
     cls = 'bad';
   }
 
@@ -222,7 +793,7 @@ document.getElementById('afford-btn').addEventListener('click', () => {
   result.className = `result-box show ${cls}`;
 });
 
-// ── 6. Loan & Scholarship Advisor ────────────────
+// ── 12. Loan & Scholarship Advisor ────────────────
 document.getElementById('loan-calc-btn').addEventListener('click', () => {
   const P = parseFloat(document.getElementById('loan-amount').value);
   const r = parseFloat(document.getElementById('loan-rate').value) / 100 / 12;
@@ -247,146 +818,85 @@ document.getElementById('loan-calc-btn').addEventListener('click', () => {
 
   const cls = totalInterest / P > 0.5 ? 'warn' : 'good';
   res.innerHTML = `
-    <strong>Loan Summary</strong><br>
-    Principal: <strong>${fmt(P)}</strong><br>
+    <strong>Loan Repayment Summary</strong><br>
     Monthly Payment: <strong>${fmt(monthly)}</strong><br>
-    Total Paid over ${document.getElementById('loan-years').value} years: <strong>${fmt(totalPaid)}</strong><br>
-    Total Interest: <strong>${fmt(totalInterest)}</strong> (${((totalInterest/P)*100).toFixed(1)}% of principal)<br><br>
-    💡 <em>Tip: Paying an extra $${(monthly * 0.1).toFixed(0)}/month could save you significant interest over time.</em>`;
+    Total Repaid (Principal + Interest): <strong>${fmt(totalPaid)}</strong><br>
+    Total Interest Paid: <strong>${fmt(totalInterest)}</strong> (${((totalInterest / P) * 100).toFixed(0)}% of principal)<br>
+    <small style="color:#64748b">Tip: Paying even $25 extra/month cuts significant interest over time!</small>`;
   res.className = `result-box show ${cls}`;
 });
 
+// Scholarships database
+const SCHOLARSHIPS = [
+  { name: 'IBM SkillsBuild Tech Scholarship', type: 'both', minGpa: 3.0, majors: ['cs', 'tech', 'engineering', 'it', 'software', 'data'], award: '$5,000' },
+  { name: 'Future Innovators STEM Grant', type: 'merit', minGpa: 3.5, majors: ['stem', 'science', 'math', 'engineering', 'cs'], award: '$7,500' },
+  { name: 'First-Generation Student Fund', type: 'need', minGpa: 2.5, majors: ['all'], award: '$3,000' },
+  { name: 'Global Diversity in Business Award', type: 'both', minGpa: 3.0, majors: ['business', 'finance', 'economics', 'marketing'], award: '$4,000' },
+  { name: 'Undergraduate Excellence Fellowship', type: 'merit', minGpa: 3.8, majors: ['all'], award: '$10,000' },
+  { name: 'Community Leadership Scholarship', type: 'need', minGpa: 2.8, majors: ['all'], award: '$2,500' }
+];
+
 document.getElementById('scholar-btn').addEventListener('click', () => {
-  const major = document.getElementById('scholar-major').value.trim();
+  const major = document.getElementById('scholar-major').value.trim().toLowerCase();
   const gpa   = parseFloat(document.getElementById('scholar-gpa').value);
   const need  = document.getElementById('scholar-need').value;
   const res   = document.getElementById('scholar-result');
 
-  if (!major) { alert('Please enter your field of study.'); return; }
+  if (isNaN(gpa)) {
+    alert('Please enter your GPA.');
+    return;
+  }
 
-  const meritScholarships = [
-    { name: 'National Merit Scholarship', req: 'GPA 3.8+', link: 'https://www.nationalmerit.org' },
-    { name: 'Gates Scholarship', req: 'GPA 3.3+ / STEM/Humanities', link: 'https://www.gatesfoundation.org' },
-    { name: 'Coca-Cola Scholars Program', req: 'Leadership + academics', link: 'https://www.coca-colascholarsfoundation.org' },
-    { name: 'Fulbright Program', req: 'Graduate students', link: 'https://www.fulbrightprogram.org' },
-  ];
-  const needScholarships = [
-    { name: 'Federal Pell Grant', req: 'Need-based (FAFSA)', link: 'https://studentaid.gov/understand-aid/types/grants/pell' },
-    { name: 'FSEOG Grant', req: 'Exceptional financial need', link: 'https://studentaid.gov/understand-aid/types/grants/fseog' },
-    { name: 'Thurgood Marshall Fund', req: 'HBCU students in need', link: 'https://www.tmcfund.org' },
-  ];
-
-  let list = [];
-  if (need === 'merit' || need === 'both') list = [...list, ...meritScholarships];
-  if (need === 'need'  || need === 'both') list = [...list, ...needScholarships];
-
-  let html = `<strong>Recommended scholarships for ${escHtml(major)}</strong><br>
-    ${!isNaN(gpa) ? `GPA: ${gpa.toFixed(1)} — ${gpa >= 3.5 ? '✅ Strong academic profile' : gpa >= 3.0 ? '🔶 Good profile — target need-based options too' : '❗ Consider community college transfer programs'}<br>` : ''}
-    <ul style="margin-top:10px;padding-left:18px;line-height:2">`;
-  list.forEach(s => {
-    html += `<li><a href="${s.link}" target="_blank" rel="noopener">${s.name}</a> — <em>${s.req}</em></li>`;
+  const matches = SCHOLARSHIPS.filter(s => {
+    if (gpa < s.minGpa) return false;
+    if (need !== 'both' && s.type !== 'both' && s.type !== need) return false;
+    if (s.majors.includes('all')) return true;
+    if (major && s.majors.some(m => major.includes(m) || m.includes(major))) return true;
+    return false;
   });
-  html += `</ul>
-    <br>💡 <em>Always check your university's financial aid office for institution-specific scholarships in ${escHtml(major)}.</em>`;
 
-  res.innerHTML = html;
-  res.className = 'result-box show info';
+  if (matches.length === 0) {
+    res.innerHTML = `No exact matches found for GPA ${gpa} in that field. Try general scholarships through <a href="https://www.fastweb.com" target="_blank" rel="noopener">Fastweb</a> or <a href="https://scholarships.com" target="_blank" rel="noopener">Scholarships.com</a>.`;
+    res.className = 'result-box show info';
+  } else {
+    let html = `<strong>${matches.length} Scholarship(s) Found!</strong><ul style="margin-top:8px;padding-left:18px;">`;
+    matches.forEach(m => {
+      html += `<li><strong>${m.name}</strong> — ${m.award} (Min GPA: ${m.minGpa}, Type: ${m.type})</li>`;
+    });
+    html += '</ul>';
+    res.innerHTML = html;
+    res.className = 'result-box show good';
+  }
 });
 
-// ── 7. AI Chat ────────────────────────────────────
-const KB = [
-  {
-    keys: ['budget','50/30/20','rule'],
-    answer: `The <strong>50/30/20 rule</strong> is a simple budgeting framework:<br>
-    • <strong>50%</strong> of income → Needs (rent, food, utilities)<br>
-    • <strong>30%</strong> → Wants (entertainment, dining out)<br>
-    • <strong>20%</strong> → Savings & debt repayment<br><br>
-    As a student, you might flip it: 60% needs, 10% wants, 30% savings if you're trying to build an emergency fund.`
-  },
-  {
-    keys: ['create','make','start','budget','plan'],
-    answer: `Here's how to create a student budget in 5 steps:<br>
-    1. <strong>Track income</strong> — part-time job, allowance, financial aid<br>
-    2. <strong>List fixed expenses</strong> — rent, tuition, subscriptions<br>
-    3. <strong>Estimate variable expenses</strong> — food, transport, entertainment<br>
-    4. <strong>Set a savings goal</strong> — even $50/month builds good habits<br>
-    5. <strong>Review weekly</strong> — use the Expense Tracker tab here!`
-  },
-  {
-    keys: ['compound','interest'],
-    answer: `<strong>Compound interest</strong> means you earn (or owe) interest on interest.<br><br>
-    Formula: <code>A = P(1 + r/n)^(nt)</code><br>
-    Example: $1,000 at 5% for 10 years = <strong>$1,629</strong> with annual compounding.<br><br>
-    For debt (like credit cards), compound interest works <em>against</em> you — pay more than the minimum whenever possible!`
-  },
-  {
-    keys: ['student loan','loan','loans','borrow','debt'],
-    answer: `Student loans 101:<br>
-    • <strong>Federal loans</strong> have lower interest rates and flexible repayment options (income-driven repayment, deferment)<br>
-    • <strong>Private loans</strong> may have higher rates — exhaust federal options first<br>
-    • <strong>Subsidized loans</strong> — govt pays interest while you're in school<br>
-    • <strong>Unsubsidized loans</strong> — interest accrues from day one<br><br>
-    Use the <em>Loan Calculator</em> tab to see exactly how much you'll repay!`
-  },
-  {
-    keys: ['save','saving','savings','tip','tips','money'],
-    answer: `Top 7 ways to save money as a student:<br>
-    1. Cook meals at home — dining out is your budget's biggest enemy<br>
-    2. Use student discounts (Spotify, Adobe, Amazon Prime, transport)<br>
-    3. Buy used textbooks or rent them<br>
-    4. Walk or bike instead of rideshares<br>
-    5. Cancel unused subscriptions<br>
-    6. Build a $500 emergency fund before anything else<br>
-    7. Automate a small transfer to savings on payday`
-  },
-  {
-    keys: ['scholarship','grant','free money','financial aid'],
-    answer: `Finding scholarships:<br>
-    • <strong>FAFSA</strong> first — unlocks federal grants (free money!)<br>
-    • Your university's financial aid portal — institution-specific awards<br>
-    • <strong>Fastweb, Scholarships.com, Bold.org</strong> — large scholarship databases<br>
-    • Local community foundations, professional associations in your field<br>
-    • Employers of your parents may offer dependent scholarships<br><br>
-    Use our <em>Scholarship Finder</em> tab for personalized suggestions!`
-  },
-  {
-    keys: ['credit card','credit','credit score'],
-    answer: `Credit cards for students:<br>
-    • A student credit card is a great way to build credit history early<br>
-    • <strong>Always pay the full balance</strong> — never just the minimum<br>
-    • Keep utilization below <strong>30%</strong> of your credit limit<br>
-    • A good credit score (700+) saves you thousands on future loans and rent<br>
-    • Avoid cash advances — interest starts immediately`
-  },
-  {
-    keys: ['emergency fund','emergency'],
-    answer: `An emergency fund is money set aside for unexpected expenses (car repair, medical bill, job loss).<br><br>
-    As a student, aim for <strong>$500–$1,000</strong> to start. Keep it in a high-yield savings account (not checking). Even saving $10/week adds up to $520 in a year!`
-  },
-  {
-    keys: ['afford','can i','purchase','buy'],
-    answer: `To check if you can afford something, go to the <strong>"Can I Afford This?"</strong> tab. Enter the item, cost, and whether it's a want, need, or investment — I'll analyze it against your current budget!`
-  },
+// ── 13. AI Financial Advisor Chat ─────────────────
+const CHAT_KNOWLEDGE = [
+  { keywords: ['budget', 'budgeting', 'create a budget', 'how to budget', 'how do i create'], answer: `Here's how to create an effective student budget in 4 simple steps:<br>1. <strong>Calculate total income</strong>: allowance, part-time job, scholarships<br>2. <strong>List fixed expenses</strong>: rent, tuition, phone bill<br>3. <strong>Estimate variable expenses</strong>: food, transport, entertainment<br>4. <strong>Apply the 50/30/20 rule</strong>: 50% Needs, 30% Wants, 20% Savings/Debt.<br><br>You can set your budget right here in the <em>Dashboard</em> tab!` },
+  { keywords: ['compound interest', 'compound', 'compounding'], answer: `<strong>Compound interest</strong> is "interest on interest" — the secret weapon of building wealth!<br><br>For example: If you invest <strong>$500</strong> at 8% annual return:<br>• After 10 years: ~$1,080<br>• After 20 years: ~$2,330<br>• After 30 years: ~$5,030<br><br>The key is <em>starting early</em>. Even $25/month in an index fund during college gives you a massive head start!` },
+  { keywords: ['student loan', 'loans', 'repay', 'interest rate', 'federal loan'], answer: `Key tips for student loans:<br>• <strong>Prioritize federal loans</strong> over private (lower rates, income-driven repayment, forgiveness options)<br>• <strong>Understand subsidized vs unsubsidized</strong>: Subsidized loans don't accrue interest while you're in school<br>• <strong>Pay interest while enrolled</strong> if you can — it stops it from capitalizing into your principal<br>• Check the <em>Loan & Scholarship</em> tab to calculate your monthly payments!` },
+  { keywords: ['saving tips', 'save money', 'cut costs', 'tips to save', 'spend less'], answer: `Top 5 money-saving hacks for students:<br>1. <strong>Buy used textbooks or rent</strong> (chegg, thriftbooks, campus library)<br>2. <strong>Meal prep</strong>: campus food adds up fast — cooking saves ~$250/month<br>3. <strong>Use student discounts</strong>: Spotify, GitHub, Amazon Prime, transit<br>4. <strong>Campus amenities</strong>: Use the campus gym, free printing, and event food<br>5. <strong>Automate savings</strong>: transfer $10/week to savings on payday before you can spend it.` },
+  { keywords: ['50/30/20', 'rule', '50 30 20'], answer: `The <strong>50/30/20 Rule</strong> is the most popular budgeting guideline:<br>• <strong>50% Needs</strong>: Housing, groceries, essential transport, bills<br>• <strong>30% Wants</strong>: Dining out, hobbies, shopping, entertainment<br>• <strong>20% Savings & Debt</strong>: Emergency fund, paying off high-interest debt, investing<br><br>As a student, your split might look more like 60/25/15 — and that's okay! Consistency matters more than perfection.` },
+  { keywords: ['credit card', 'credit score', 'build credit'], answer: `Building credit safely in college:<br>• Start with a <strong>student credit card</strong> or secured card (no annual fee)<br>• <strong>Pay off the full balance every month</strong> to never pay interest<br>• Keep your <strong>credit utilization below 30%</strong> (under $90 on a $300 limit)<br>• Never miss a payment — payment history is 35% of your credit score!` }
 ];
 
-function getAIResponse(input) {
-  const lower = input.toLowerCase();
-  for (const entry of KB) {
-    if (entry.keys.some(k => lower.includes(k))) {
-      return entry.answer;
+function getAIResponse(query) {
+  const q = query.toLowerCase();
+  for (const item of CHAT_KNOWLEDGE) {
+    if (item.keywords.some(k => q.includes(k))) {
+      return item.answer;
     }
   }
-  // Fallback
-  return `That's a great question! Here's general financial advice for students:<br>
-  • Track every expense — awareness is step 1<br>
-  • Live below your means — spend less than you earn<br>
-  • Invest in your education — it's the highest-ROI investment<br>
-  • Avoid lifestyle inflation as your income grows<br><br>
+  return `That's a thoughtful question! Here is general financial guidance for students:<br>
+  • Always track every expense — awareness is step #1<br>
+  • Live below your means — maintain positive cash flow<br>
+  • Treat your education and skills as your highest-ROI investment<br>
+  • Watch out for lifestyle creep as your income expands<br><br>
   Try asking about: <em>budgeting, student loans, saving tips, scholarships, compound interest, or credit cards</em>.`;
 }
 
 function appendChatMsg(text, role) {
   const wrap = document.getElementById('chat-messages');
+  if (!wrap) return;
   const div  = document.createElement('div');
   div.className = `chat-msg ${role}`;
   div.innerHTML = `
@@ -397,27 +907,31 @@ function appendChatMsg(text, role) {
 }
 
 function sendChatMessage(text) {
-  if (!text.trim()) return;
+  if (!text || !text.trim()) return;
   appendChatMsg(escHtml(text), 'user');
-  document.getElementById('chat-input').value = '';
+  const inputEl = document.getElementById('chat-input');
+  if (inputEl) inputEl.value = '';
   setTimeout(() => {
     appendChatMsg(getAIResponse(text), 'bot');
   }, 400);
 }
 
-document.getElementById('chat-send-btn').addEventListener('click', () => {
-  sendChatMessage(document.getElementById('chat-input').value);
-});
-
-document.getElementById('chat-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') sendChatMessage(e.target.value);
-});
+const chatSendBtn = document.getElementById('chat-send-btn');
+const chatInput = document.getElementById('chat-input');
+if (chatSendBtn && chatInput) {
+  chatSendBtn.addEventListener('click', () => sendChatMessage(chatInput.value));
+  chatInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendChatMessage(e.target.value);
+  });
+}
 
 document.querySelectorAll('.quick-btn').forEach(btn => {
   btn.addEventListener('click', () => sendChatMessage(btn.dataset.q));
 });
 
-// ── Init ──────────────────────────────────────────
+// ── 14. Initialization ────────────────────────────
+initVault3DTilt();
 refreshDashboard();
 renderExpenses();
-document.getElementById('exp-date').valueAsDate = new Date();
+const expDateInput = document.getElementById('exp-date');
+if (expDateInput) expDateInput.valueAsDate = new Date();
