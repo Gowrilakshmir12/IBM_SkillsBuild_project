@@ -75,7 +75,6 @@ IBM_SkillsBuild_project/
 ├── styles.css          # Complete styling (nav, cards, table, chat, responsive)
 ├── app.js              # All application logic (state, tabs, modules, AI chat KB)
 ├── README.md           # This file
-└── IBM_BOB_USAGE.md    # How IBM Bob was used to build this project
 ```
 
 ---
